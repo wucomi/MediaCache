@@ -5,14 +5,9 @@ import android.util.Range
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.RandomAccessFile
 import java.security.MessageDigest
-import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 本地缓存管理
@@ -29,23 +24,12 @@ class LocalCache(cachePath: String) {
         private const val CACHE_DIR = "video_cache"
         private const val INDEX_FILE = "index.json"
         private const val VIDEO_FILE = "video.mp4"
-        private const val TMP_DIR = "tmp"
     }
 
     private val gson: Gson = GsonBuilder().create()
 
     private val cacheDir = File(cachePath, CACHE_DIR).apply {
         if (!exists()) mkdirs()
-    }
-
-    // 文件锁映射表
-    private val fileLocks = ConcurrentHashMap<String, Mutex>()
-
-    /**
-     * 获取文件锁
-     */
-    private fun getFileLock(key: String): Mutex {
-        return fileLocks.getOrPut(key) { Mutex() }
     }
 
     /**
@@ -74,19 +58,28 @@ class LocalCache(cachePath: String) {
      * 获取video.mp4文件路径
      */
     fun getPlayFile(videoUrl: String): File {
-        return File(getCacheDir(videoUrl), VIDEO_FILE)
+        val dir = getCacheDir(videoUrl)
+        val file = File(dir, VIDEO_FILE)
+        if (!file.exists()) {
+            try {
+                file.createNewFile()
+            } catch (e: Exception) {
+                Log.e(TAG, "创建播放文件失败: ${e.message}")
+            }
+        }
+        return file
     }
 
     /**
      * 创建播放文件
      */
-    suspend fun createPlayFile(
+    fun createPlayFile(
         videoUrl: String,
         totalSize: Long
-    ): File = withContext(Dispatchers.IO) {
+    ): File {
         val file = getPlayFile(videoUrl)
         RandomAccessFile(file, "rw").use { it.setLength(totalSize) }
-        file
+        return file
     }
 
     /**
@@ -99,15 +92,18 @@ class LocalCache(cachePath: String) {
     /**
      * 获取Index配置
      */
-    suspend fun getIndexConfig(videoUrl: String): List<Range<Long>>? = withContext(Dispatchers.IO) {
+    fun getIndexConfig(videoUrl: String): List<Range<Long>>? {
         val file = getIndexFile(videoUrl)
-        getFileLock(file.absolutePath).withLock {
-            if (!file.exists()) return@withLock null
+        synchronized(file) {
+            if (!file.exists()) return null
             try {
-                gson.fromJson(file.readText(), object : TypeToken<List<Range<Long>>>() {}.type)
+                return gson.fromJson(
+                    file.readText(),
+                    object : TypeToken<List<Range<Long>>>() {}.type
+                )
             } catch (e: Exception) {
                 Log.e(TAG, "读取index.json失败: ${e.message}")
-                null
+                return null
             }
         }
     }
@@ -115,18 +111,18 @@ class LocalCache(cachePath: String) {
     /**
      * 保存索引配置
      */
-    suspend fun saveIndexConfig(
+    fun saveIndexConfig(
         videoUrl: String,
         config: List<Range<Long>>
-    ): Boolean = withContext(Dispatchers.IO) {
+    ): Boolean {
         val file = getIndexFile(videoUrl)
-        getFileLock(file.absolutePath).withLock {
+        synchronized(file) {
             try {
                 file.writeText(gson.toJson(config))
-                true
+                return true
             } catch (e: Exception) {
                 Log.e(TAG, "保存index.json失败: ${e.message}")
-                false
+                return false
             }
         }
     }
@@ -134,7 +130,7 @@ class LocalCache(cachePath: String) {
     /**
      * 删除所有缓存配置
      */
-    suspend fun delete(videoUrl: String) = withContext(Dispatchers.IO) {
+    fun delete(videoUrl: String) {
         val dir = getCacheDir(videoUrl)
         dir.deleteRecursively()
     }

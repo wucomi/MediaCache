@@ -12,11 +12,10 @@ import com.hik.media.local.LocalCache
 import com.hik.media.source.HttpMediaDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.RandomAccessFile
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.concurrent.thread
 
 class MediaCache(private val url: String, cachePath: String) : MediaDataSource() {
 
@@ -24,19 +23,24 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
     private var mediaDataSource: MediaDataSource = HttpMediaDataSource(url)
     private val mediaExtractor = MediaExtractor()
     private val localCache = LocalCache(cachePath)
-    private val coroutine = CoroutineScope(Dispatchers.IO)
-    private val randomAccessFile = RandomAccessFile(localCache.getPlayFile(url), "rw")
+    private val playFile = localCache.getPlayFile(url)
+    private val randomAccessFile = RandomAccessFile(playFile, "rw")
     private val config = CopyOnWriteArrayList<Range<Long>>()
     private var currentTimeUs: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
 
     init {
-        thread {
-            mediaExtractor.setDataSource(this)
+        localCache.getIndexConfig(url)?.let {
+            config.addAll(it)
         }
-        coroutine.launch {
-            localCache.getIndexConfig(url)?.let {
-                config.addAll(it)
+    }
+
+    fun start() {
+        CoroutineScope(Dispatchers.IO).launch {
+            mediaExtractor.setDataSource(this@MediaCache)
+            while (true) {
+                updateStatue()
+                delay(500)
             }
         }
     }
@@ -66,19 +70,18 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
             val missingRange = isMissingRange(Range(position, upper))
             val size = if (missingRange) {
                 val size = mediaDataSource.readAt(position, buffer, offset, size)
-                randomAccessFile.let { raf ->
-                    synchronized(raf) {
-                        raf.seek(position)
-                        raf.write(buffer, offset, size)
-                    }
+                synchronized(randomAccessFile) {
+                    randomAccessFile.seek(position)
+                    randomAccessFile.write(buffer, offset, size)
                 }
                 saveConfig(position, upper)
                 size
             } else {
-                randomAccessFile.seek(position)
-                randomAccessFile.read(buffer, offset, size)
+                synchronized(randomAccessFile) {
+                    randomAccessFile.seek(position)
+                    randomAccessFile.read(buffer, offset, size)
+                }
             }
-            updateStatue()
             return size
         } catch (e: Throwable) {
             Log.e(TAG, "readAt失败", e)
@@ -102,7 +105,6 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
     override fun close() {
         try {
             randomAccessFile.close()
-            coroutine.cancel()
             return mediaDataSource.close()
         } catch (e: Throwable) {
             Log.e(TAG, "close失败", e)
@@ -111,12 +113,13 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
 
     // 更新缓冲状态
     private fun updateStatue() {
-        val playFile = localCache.getPlayFile(url).absolutePath
-        if (mediaExtractor.cachedDuration < 1) {
+        val playFile = playFile.absolutePath
+        val cachedDuration = mediaExtractor.cachedDuration
+        if (cachedDuration <= 0) {
             handler.post {
                 cacheCallback?.onBufferingLack()
             }
-        } else if (mediaExtractor.cachedDuration > 3) {
+        } else if (cachedDuration > 3_000_000) {
             if (currentTimeUs == 0L) {
                 handler.post {
                     cacheCallback?.onReady(playFile)
@@ -128,6 +131,15 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
             }
         }
 
+        if (isComplete()) {
+            handler.post {
+                cacheCallback?.onComplete(playFile)
+            }
+        }
+    }
+
+    // 是否加载完成
+    private fun isComplete(): Boolean {
         var isComplete = true
         for ((index, range) in config.withIndex()) {
             if (index < config.size - 1 && range.upper < config[index + 1].lower) {
@@ -135,11 +147,7 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
                 break
             }
         }
-        if (isComplete) {
-            handler.post {
-                cacheCallback?.onComplete(playFile)
-            }
-        }
+        return isComplete
     }
 
     // 是否是缺失的分片
@@ -149,16 +157,29 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
 
     // 保存配置
     private fun saveConfig(lower: Long, upper: Long) {
-        val range = Range(lower, upper)
-        config.removeIf { range.contains(it) }
-        val index = config.indexOfFirst { it.upper >= lower }
-        config[index] = Range(config[index].lower, upper)
-        if (index + 1 < config.size - 1 && config[index + 1].lower <= upper) {
-            config[index] = Range(config[index].lower, config[index + 1].upper)
+        val newRange = Range(lower, upper)
+        val allRanges = config.toMutableList()
+        allRanges.add(newRange)
+        allRanges.sortBy { it.lower }
+
+        val merged = mutableListOf<Range<Long>>()
+        var current = allRanges[0]
+
+        for (i in 1 until allRanges.size) {
+            val next = allRanges[i]
+            if (next.lower <= current.upper + 1) {
+                current = Range(current.lower, maxOf(current.upper, next.upper))
+            } else {
+                merged.add(current)
+                current = next
+            }
         }
-        coroutine.launch {
-            localCache.saveIndexConfig(url, config)
-        }
+        merged.add(current)
+
+        config.clear()
+        config.addAll(merged)
+        Log.d(TAG, "saveConfig: $config")
+        localCache.saveIndexConfig(url, config)
     }
 
     private fun callOnError(code: Int) {

@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity(), CacheCallback {
             }
         })
 
-        binding.etVideoUrl.setText("https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/10/80/36603168010/36603168010-1-192.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&oi=144233936&gen=playurlv3&trid=680597f372f044129c2dec0c4bd4309O&mid=0&nbs=1&uipk=5&platform=html5&deadline=1775511414&os=08hbv&og=hw&upsig=ed988b66430953fb37846440fcc359da&uparams=e,oi,gen,trid,mid,nbs,uipk,platform,deadline,os,og&bvc=vod&nettype=1&bw=524051&f=O_0_0&agrr=1&buvid=&build=7330300&dl=0&orderid=0,3")
+        binding.etVideoUrl.setText("https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/10/80/36603168010/36603168010-1-192.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&oi=144233936&uipk=5&deadline=1775587247&platform=html5&os=estghw&trid=4a4b2ac1cba641d7a92dab24b3e8757O&nbs=1&mid=0&gen=playurlv3&og=hw&upsig=8009ecd655ebef0fd996ef39a096029e&uparams=e,oi,uipk,deadline,platform,os,trid,nbs,mid,gen,og&bvc=vod&nettype=1&bw=524051&build=7330300&dl=0&f=O_0_0&agrr=0&buvid=&orderid=0,3")
     }
 
     private fun startPlayback(url: String) {
@@ -155,12 +155,14 @@ class MainActivity : AppCompatActivity(), CacheCallback {
 
         mediaCache?.close()
         val cacheDir = externalCacheDir?.absolutePath ?: cacheDir.absolutePath
-        mediaCache = MediaCache(cacheDir, url).apply {
+        mediaCache = MediaCache(url, cacheDir).apply {
             setCacheCallback(this@MainActivity)
         }
 
         binding.progressBar.visibility = View.VISIBLE
         binding.tvStatus.text = "准备中..."
+
+        mediaCache?.start()
     }
 
     @SuppressLint("SetTextI18n")
