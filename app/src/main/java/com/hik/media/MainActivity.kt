@@ -147,7 +147,7 @@ class MainActivity : AppCompatActivity(), CacheCallback {
             }
         })
 
-        binding.etVideoUrl.setText("https://upos-sz-mirrorcos.bilivideo.com/upgcxcode/10/80/36603168010/36603168010-1-192.mp4?e=ig8euxZM2rNcNbRVhwdVhwdlhWdVhwdVhoNvNC8BqJIzNbfq9rVEuxTEnE8L5F6VnEsSTx0vkX8fqJeYTj_lta53NCM=&oi=144233936&uipk=5&deadline=1775587247&platform=html5&os=estghw&trid=4a4b2ac1cba641d7a92dab24b3e8757O&nbs=1&mid=0&gen=playurlv3&og=hw&upsig=8009ecd655ebef0fd996ef39a096029e&uparams=e,oi,uipk,deadline,platform,os,trid,nbs,mid,gen,og&bvc=vod&nettype=1&bw=524051&build=7330300&dl=0&f=O_0_0&agrr=0&buvid=&orderid=0,3")
+        binding.etVideoUrl.setText("https://v11-default.365yg.com/ee301c05d81b458e9f43d6dfb6b3758a/69d568b7/video/tos/cn/tos-cn-ve-15/o8IBpLTq0CCgBKGaEeO8DETAISrU8UeLf64A7Q/?a=0&br=2676&bt=2676&btag=80000e00030000&cd=0%7C0%7C0%7C0&ch=0&cquery=106H&cr=0&cs=0&cv=1&dr=0&ds=3&dy_q=1775589461&dy_va_biz_cert=&feature_id=fea919893f650a8c49286568590446ef&ft=k7Fz7VVywIiRZm8Zmo~pK7pswApsm.f_vrKlISd2do0g3cI&l=202604080317411AD9A7908D7EAE049193&lr=unwatermarked&mime_type=video_mp4&net=5&qs=0&rc=OGRpNzU0OjU0NTtoODpmN0BpMzNvbHk5cjR0OTMzNGkzM0A1YS5iYC8tNi8xLjAzMjM0YSNyc2ReMmRjYmhhLS1kLS9zcw%3D%3D")
     }
 
     private fun startPlayback(url: String) {

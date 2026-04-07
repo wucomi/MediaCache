@@ -12,6 +12,7 @@ import com.hik.media.local.LocalCache
 import com.hik.media.source.HttpMediaDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.RandomAccessFile
@@ -28,6 +29,7 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
     private val config = CopyOnWriteArrayList<Range<Long>>()
     private var currentTimeUs: Long = 0L
     private val handler = Handler(Looper.getMainLooper())
+    private val coroutine = CoroutineScope(Dispatchers.IO)
 
     init {
         localCache.getIndexConfig(url)?.let {
@@ -36,7 +38,7 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
     }
 
     fun start() {
-        CoroutineScope(Dispatchers.IO).launch {
+        coroutine.launch {
             mediaExtractor.setDataSource(this@MediaCache)
             while (true) {
                 updateStatue()
@@ -105,6 +107,7 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
     override fun close() {
         try {
             randomAccessFile.close()
+            coroutine.cancel()
             return mediaDataSource.close()
         } catch (e: Throwable) {
             Log.e(TAG, "close失败", e)

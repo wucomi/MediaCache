@@ -118,7 +118,7 @@ class LocalCache(cachePath: String) {
         val file = getIndexFile(videoUrl)
         synchronized(file) {
             try {
-                file.writeText(gson.toJson(config))
+                file.writeText("[${config.joinToString()}]")
                 return true
             } catch (e: Exception) {
                 Log.e(TAG, "保存index.json失败: ${e.message}")
