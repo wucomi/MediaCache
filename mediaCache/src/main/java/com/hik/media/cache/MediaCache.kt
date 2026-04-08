@@ -12,11 +12,15 @@ import com.hik.media.local.LocalCache
 import com.hik.media.source.HttpMediaDataSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.RandomAccessFile
+import java.net.ServerSocket
+import java.net.Socket
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.concurrent.thread
 
 class MediaCache(private val url: String, cachePath: String) : MediaDataSource() {
 
@@ -28,6 +32,7 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
     private val randomAccessFile = RandomAccessFile(playFile, "rw")
     private val config = CopyOnWriteArrayList<Range<Long>>()
     private var currentTimeUs: Long = 0L
+    private var isMetaComplete = false
     private val handler = Handler(Looper.getMainLooper())
     private val coroutine = CoroutineScope(Dispatchers.IO)
 
@@ -39,11 +44,75 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
 
     fun start() {
         coroutine.launch {
-            mediaExtractor.setDataSource(this@MediaCache)
+            val proxyServer = ServerSocket(55555)
+            var job: Job? = null
             while (true) {
-                updateStatue()
-                delay(500)
+                val client = proxyServer.accept()
+                job?.cancel()
+                job = coroutine.launch {
+                    handle(client)
+                }
             }
+        }
+//        CoroutineScope(Dispatchers.IO).launch {
+//            while (true) {
+//                runCatching {
+//                    updateStatue()
+//                    delay(500)
+//                }
+//            }
+//        }
+        coroutine.launch {
+            try {
+                mediaExtractor.setDataSource("http://127.0.0.1:55555")
+                isMetaComplete = true
+                Log.d(TAG, "meta data load complete")
+//               delay(1000)
+//               handler.post {
+//                   val videoTrackIndex = (0 until mediaExtractor.trackCount).find { i ->
+//                       val format = mediaExtractor.getTrackFormat(i)
+//                       val mime = format.getString(MediaFormat.KEY_MIME) ?: ""
+//                       mime.startsWith("video/")
+//                   } ?: 0
+//                   mediaExtractor.selectTrack(videoTrackIndex)
+//                   seekTo(259722684 )
+//
+//                   val buffer = ByteBuffer.allocate(65536)
+//                   val size = mediaExtractor.readSampleData(buffer, 0)
+//                   mediaExtractor.advance()
+//                   println("${mediaExtractor.sampleTime}==============$size")
+//               }
+            } catch (e: Throwable) {
+                callOnError(ErrorCode.DOWNLOAD_ERROR)
+            }
+        }
+    }
+
+    fun handle(client: Socket) {
+        val reader = client.getInputStream().bufferedReader()
+        var rangeStart = 0L
+        var rangeEnd = -1L
+        var line: String?
+        do {
+            line = reader.readLine()
+            if (line?.startsWith("Range:") == true) {
+                val r = line.substringAfter("bytes=").trim().split("-")
+                rangeStart = r[0].toLongOrNull() ?: 0
+                rangeEnd = if (r.size > 1) r[1].toLongOrNull() ?: -1 else -1
+            }
+        } while (line?.isNotEmpty() == true)
+        if (rangeEnd == -1L) {
+            rangeEnd = Long.MAX_VALUE
+        }
+
+        for (position in rangeStart..rangeEnd step 2024) {
+            val buffer = ByteArray(65536)
+            val size = readAt(position, ByteArray(65536), 0, 2024)
+            if (size <= 0) break
+            val outputStream = client.getOutputStream()
+            outputStream.write(buffer, 0, size)
+            outputStream.flush()
+            println("==============$position")
         }
     }
 
@@ -116,6 +185,7 @@ class MediaCache(private val url: String, cachePath: String) : MediaDataSource()
 
     // 更新缓冲状态
     private fun updateStatue() {
+        println("==111==========" + mediaExtractor.cachedDuration)
         val playFile = playFile.absolutePath
         val cachedDuration = mediaExtractor.cachedDuration
         if (cachedDuration <= 0) {

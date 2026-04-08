@@ -2,6 +2,7 @@ package com.hik.media
 
 import android.annotation.SuppressLint
 import android.graphics.SurfaceTexture
+import android.media.MediaExtractor
 import android.media.MediaPlayer
 import android.os.Bundle
 import android.os.Handler
@@ -18,6 +19,7 @@ import com.hik.media.databinding.ActivityMainBinding
 import com.hik.media.error.ErrorCode
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.nio.ByteBuffer
 
 class MainActivity : AppCompatActivity(), CacheCallback {
 
@@ -47,6 +49,32 @@ class MainActivity : AppCompatActivity(), CacheCallback {
 
         setupTextureView()
         setupControls()
+
+//        val mediaExtractor = MediaExtractor()
+//        mediaExtractor.setDataSource(
+//            "https://v5-se-jltc-default.365yg.com/1f6d6b32fd7e224b4ba51d9197935801/69d692d0/video/tos/cn/tos-cn-v-0015c002/o8uUEELEGKi40CpgAIewAWgPfLqUETBBMe87Sp/?a=0&br=59958&bt=59958&btag=80000e00030000&cd=0%7C0%7C0%7C0&ch=0&cquery=106H&cr=0&cv=1&dr=0&dy_q=1775665774&dy_va_biz_cert=&er=6&ft=aT_7TQQqUnXfmoZmo0OW_QYaUqiXcnUskVJEDOIv3bPD-Ipz&l=202604090029348E7667A5C49801406BF4&lr=unwatermarked&mime_type=video_mp4&net=5&qs=13&rc=MzNvbHk5cjR0OTMzNGkzM0BpMzNvbHk5cjR0OTMzNGkzM0Byc2ReMmRjYmhhLS1kLS9zYSNyc2ReMmRjYmhhLS1kLS9zcw%3D%3D"
+//        )
+//        println("=====================" + mediaExtractor.trackCount)
+//        lifecycleScope.launch {
+//            while (true){
+//                println(
+//                    "${ mediaExtractor.cachedDuration}=================${ mediaExtractor.trackCount} ==========${mediaExtractor.sampleSize}"
+//                )
+//                delay(500)
+//            }
+//        }
+//        mediaExtractor.selectTrack(0)
+//        while (true) {
+//            val buffer = ByteBuffer.allocate(2 * 1024)
+//            val sampleSize: Int = mediaExtractor.readSampleData(buffer, 0)
+//            val sampleTime: Long = mediaExtractor.sampleTime
+//            val flags: Int = mediaExtractor.sampleFlags
+//            println("$sampleSize===============$sampleTime")
+//            mediaExtractor.advance()
+//        }
+
+        MediaCache("https://v11-default.365yg.com/ede93723cb75fda7ee00ce2ebd295ea7/69d69d36/video/tos/cn/tos-cn-ve-15/o8IBpLTq0CCgBKGaEeO8DETAISrU8UeLf64A7Q/?a=0&ch=0&cr=0&dr=0&lr=unwatermarked&net=5&cd=0%7C0%7C0%7C0&cv=1&br=2676&bt=2676&cs=0&ds=3&ft=k7Fz7VVywIiRZm8Zmo~pK7pswAp~q9f_vrKlISd2do0g3cI&mime_type=video_mp4&qs=0&rc=OGRpNzU0OjU0NTtoODpmN0BpMzNvbHk5cjR0OTMzNGkzM0A1YS5iYC8tNi8xLjAzMjM0YSNyc2ReMmRjYmhhLS1kLS9zcw%3D%3D&btag=80000e00030000&cquery=106H&dy_q=1775668436&feature_id=fea919893f650a8c49286568590446ef&l=20260409011356B2F16A848A99BE436BD2", cacheDir.absolutePath)
+            .start()
     }
 
     private fun setupTextureView() {
@@ -147,7 +175,7 @@ class MainActivity : AppCompatActivity(), CacheCallback {
             }
         })
 
-        binding.etVideoUrl.setText("https://v11-default.365yg.com/ee301c05d81b458e9f43d6dfb6b3758a/69d568b7/video/tos/cn/tos-cn-ve-15/o8IBpLTq0CCgBKGaEeO8DETAISrU8UeLf64A7Q/?a=0&br=2676&bt=2676&btag=80000e00030000&cd=0%7C0%7C0%7C0&ch=0&cquery=106H&cr=0&cs=0&cv=1&dr=0&ds=3&dy_q=1775589461&dy_va_biz_cert=&feature_id=fea919893f650a8c49286568590446ef&ft=k7Fz7VVywIiRZm8Zmo~pK7pswApsm.f_vrKlISd2do0g3cI&l=202604080317411AD9A7908D7EAE049193&lr=unwatermarked&mime_type=video_mp4&net=5&qs=0&rc=OGRpNzU0OjU0NTtoODpmN0BpMzNvbHk5cjR0OTMzNGkzM0A1YS5iYC8tNi8xLjAzMjM0YSNyc2ReMmRjYmhhLS1kLS9zcw%3D%3D")
+        binding.etVideoUrl.setText("https://v11-default.365yg.com/cd9302b4891111bf44ea2949fcc76413/69d68a02/video/tos/cn/tos-cn-ve-15/o8IBpLTq0CCgBKGaEeO8DETAISrU8UeLf64A7Q/?a=0&ch=0&cr=0&dr=0&lr=unwatermarked&net=5&cd=0%7C0%7C0%7C0&cv=1&br=2676&bt=2676&cs=0&ds=3&ft=k7Fz7VVywIiRZm8Zmo~pK7pswApWVqf_vrKlISd2do0g3cI&mime_type=video_mp4&qs=0&rc=OGRpNzU0OjU0NTtoODpmN0BpMzNvbHk5cjR0OTMzNGkzM0A1YS5iYC8tNi8xLjAzMjM0YSNyc2ReMmRjYmhhLS1kLS9zcw%3D%3D&btag=80000e00030000&cquery=106H&dy_q=1775663520&feature_id=fea919893f650a8c49286568590446ef&l=2026040823520092685E46449C7A3DCA72")
     }
 
     private fun startPlayback(url: String) {
